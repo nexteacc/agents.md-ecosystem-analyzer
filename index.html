@@ -51,6 +51,48 @@
         text-overflow: clip !important;
         white-space: nowrap !important;
       }
+      /* Remove focus outline and selection border from Recharts */
+      .recharts-wrapper:focus {
+        outline: none !important;
+      }
+      .recharts-wrapper {
+        outline: none !important;
+      }
+      .recharts-active-shape {
+        outline: none !important;
+      }
+      /* Remove blue border/outline from pie chart segments */
+      .recharts-sector:focus {
+        outline: none !important;
+      }
+      .recharts-sector {
+        outline: none !important;
+        stroke: none !important;
+        transition: all 0.3s ease !important;
+      }
+      /* Remove all borders and outlines from pie chart sectors */
+      .recharts-pie-sector {
+        transition: all 0.3s ease !important;
+        outline: none !important;
+        stroke: none !important;
+      }
+      .recharts-pie-sector:focus {
+        outline: none !important;
+        stroke: none !important;
+      }
+      /* Remove blue selection border from active shape */
+      .recharts-active-shape > * {
+        outline: none !important;
+        stroke: none !important;
+      }
+      /* Remove any blue borders from recharts elements */
+      .recharts-wrapper svg * {
+        outline: none !important;
+      }
+      .recharts-wrapper svg *:focus {
+        outline: none !important;
+        stroke: none !important;
+      }
     </style>
   <script type="importmap">
 {

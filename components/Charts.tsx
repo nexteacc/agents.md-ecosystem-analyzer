@@ -10,6 +10,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Sector,
 } from 'recharts';
 import { RepositoryNode, AnalysisStats } from '../types';
 
@@ -39,6 +40,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const LanguagePieChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) => {
   const data = stats.topLanguages.slice(0, 6);
+  const [activeIndex, setActiveIndex] = React.useState<number | undefined>(undefined);
+
+  const onPieEnter = (_: any, index: number) => {
+    setActiveIndex(index);
+  };
+
+  const onPieLeave = () => {
+    setActiveIndex(undefined);
+  };
 
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-[400px] flex flex-col">
@@ -56,6 +66,31 @@ export const LanguagePieChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) 
               dataKey="count"
               nameKey="name"
               stroke="none"
+              activeIndex={activeIndex}
+              onMouseEnter={onPieEnter}
+              onMouseLeave={onPieLeave}
+              isAnimationActive={true}
+              animationDuration={300}
+              activeShape={(props: any) => {
+                const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                return (
+                  <Sector
+                    cx={cx}
+                    cy={cy}
+                    innerRadius={innerRadius}
+                    outerRadius={outerRadius + 6}
+                    startAngle={startAngle}
+                    endAngle={endAngle}
+                    fill={fill}
+                    stroke="none"
+                    style={{ 
+                      transition: 'all 0.3s ease',
+                      outline: 'none',
+                      stroke: 'none'
+                    }}
+                  />
+                );
+              }}
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
@@ -90,7 +125,7 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
 
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-[400px] flex flex-col">
-      <h3 className="text-sm font-semibold text-gray-900 mb-6">Most Popular Repositories</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-6">AGENTS.md Cases</h3>
       <div className="flex-grow text-xs" style={{ overflow: 'visible' }}>
         {/* Style to remove focus outline from recharts wrapper */}
         <style dangerouslySetInnerHTML={{
@@ -153,7 +188,6 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
                     <div className="bg-white p-2 border border-blue-100 shadow-sm rounded text-xs">
                       <p className="font-semibold text-gray-800">{data.fullName}</p>
                       <p className="text-gray-500 mb-1">Stars: {data.stars.toLocaleString()}</p>
-                      <p className="text-blue-500 text-[10px] italic">Click to view AGENTS.md ↗</p>
                     </div>
                   );
                 }
