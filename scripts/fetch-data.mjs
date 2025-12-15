@@ -134,20 +134,40 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
  * by trading time (more requests) for space (unlimited result capacity).
  */
 async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
-  // Build size filter: use range syntax if minSize > 0, otherwise use > syntax
+  // GitHub Code Search API size filter syntax (legacy code search):
+  // - 精确大小: size:n (文件大小正好等于 n 字节)
+  // - 大小比较: size:>n, size:>=n, size:<n, size:<=n
+  // - 区间范围: size:n..m (介于 n 到 m 字节)
+  // 
+  // Note: 不支持同时组合使用 size:>=X size:<=Y (会导致 422 错误)
+  // 应该使用范围语法 size:X..Y 或分别查询
+  
+  // Build size filter based on range
   let sizeFilter;
+  const rangeStr = `${minSize}..${maxSize}`;
+  
   if (minSize === maxSize) {
-    // Exact size match - not supported by GitHub, use range around it
-    sizeFilter = `size:${Math.max(1, minSize - 1)}..${maxSize + 1}`;
-  } else if (minSize === 1 && maxSize >= 1000) {
-    // Large range: use >= and <= syntax for better compatibility
-    sizeFilter = `size:>=${minSize} size:<=${maxSize}`;
+    // 精确大小：使用 size:n 语法（更符合规范）
+    sizeFilter = `size:${minSize}`;
   } else {
-    // Standard range syntax
-    sizeFilter = `size:${minSize}..${maxSize}`;
+    // 区间范围：使用 size:n..m 语法
+    sizeFilter = `size:${rangeStr}`;
   }
   
-  const rangeStr = `${minSize}..${maxSize}`;
+  // Safety check: GitHub API may reject very large ranges
+  // Pre-split large ranges to avoid 422 errors
+  const MAX_SAFE_RANGE = 50000; // 50KB - empirically safe limit
+  const rangeSize = maxSize - minSize;
+  
+  if (rangeSize > MAX_SAFE_RANGE && minSize !== maxSize) {
+    // Range is too large, split it BEFORE querying API
+    const mid = Math.floor((minSize + maxSize) / 2);
+    console.log(`      ⚠️ Range ${rangeStr} too large (${rangeSize} bytes > ${MAX_SAFE_RANGE}). Pre-splitting...`);
+    await recursiveSearch(token, minSize, mid, allNodeIds);
+    await recursiveSearch(token, mid + 1, maxSize, allNodeIds);
+    return;
+  }
+  
   const coreQuery = `fork:false ${sizeFilter}`;
   const probeQuery = `filename:agents.md ${coreQuery}`;
 
