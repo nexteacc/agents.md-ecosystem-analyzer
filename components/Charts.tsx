@@ -67,10 +67,10 @@ export const LanguagePieChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) 
         {/* Custom minimalist legend */}
         <div className="flex flex-wrap justify-center gap-3 mt-2">
           {data.map((entry, index) => (
-             <div key={entry.name} className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}></span>
-                <span className="text-gray-500">{entry.name}</span>
-             </div>
+            <div key={entry.name} className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}></span>
+              <span className="text-gray-500">{entry.name}</span>
+            </div>
           ))}
         </div>
       </div>
@@ -100,28 +100,28 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
             <XAxis type="number" hide />
-            <YAxis 
-              type="category" 
-              dataKey="name" 
-              width={110} 
-              tick={{ fill: '#6b7280', fontSize: 11 }} 
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={150}
+              tick={{ fill: '#6b7280', fontSize: 11 }}
               interval={0}
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip 
+            <Tooltip
               cursor={{ fill: '#f9fafb' }}
               content={({ active, payload }) => {
-                 if (active && payload && payload.length) {
-                   const data = payload[0].payload;
-                   return (
-                     <div className="bg-white p-2 border border-gray-100 shadow-sm rounded text-xs">
-                       <p className="font-semibold text-gray-800">{data.fullName}</p>
-                       <p className="text-gray-500">Stars: {data.stars.toLocaleString()}</p>
-                     </div>
-                   );
-                 }
-                 return null;
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-2 border border-gray-100 shadow-sm rounded text-xs">
+                      <p className="font-semibold text-gray-800">{data.fullName}</p>
+                      <p className="text-gray-500">Stars: {data.stars.toLocaleString()}</p>
+                    </div>
+                  );
+                }
+                return null;
               }}
             />
             <Bar dataKey="stars" fill="#202123" radius={[0, 2, 2, 0]} barSize={16} />
@@ -134,24 +134,24 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
 
 export const LicenseChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) => {
   const data = stats.licenseDistribution.slice(0, 5);
-  
+
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-[320px] flex flex-col">
       <h3 className="text-sm font-semibold text-gray-900 mb-6">Licenses</h3>
       <div className="flex-grow text-xs">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-             <XAxis 
-                dataKey="name" 
-                tick={{ fill: '#6b7280', fontSize: 10 }} 
-                interval={0} 
-                axisLine={false}
-                tickLine={false}
-             />
-             <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 10}} />
-             <Tooltip cursor={{ fill: '#f9fafb' }} content={<CustomTooltip />} />
-             <Bar dataKey="count" fill="#10a37f" radius={[2, 2, 0, 0]} barSize={32} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: '#6b7280', fontSize: 10 }}
+              interval={0}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 10 }} />
+            <Tooltip cursor={{ fill: '#f9fafb' }} content={<CustomTooltip />} />
+            <Bar dataKey="count" fill="#10a37f" radius={[2, 2, 0, 0]} barSize={32} />
           </BarChart>
         </ResponsiveContainer>
       </div>
