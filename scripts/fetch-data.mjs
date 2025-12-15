@@ -134,8 +134,21 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
  * by trading time (more requests) for space (unlimited result capacity).
  */
 async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
+  // Build size filter: use range syntax if minSize > 0, otherwise use > syntax
+  let sizeFilter;
+  if (minSize === maxSize) {
+    // Exact size match - not supported by GitHub, use range around it
+    sizeFilter = `size:${Math.max(1, minSize - 1)}..${maxSize + 1}`;
+  } else if (minSize === 1 && maxSize >= 1000) {
+    // Large range: use >= and <= syntax for better compatibility
+    sizeFilter = `size:>=${minSize} size:<=${maxSize}`;
+  } else {
+    // Standard range syntax
+    sizeFilter = `size:${minSize}..${maxSize}`;
+  }
+  
   const rangeStr = `${minSize}..${maxSize}`;
-  const coreQuery = `fork:false size:${rangeStr}`;
+  const coreQuery = `fork:false ${sizeFilter}`;
   const probeQuery = `filename:agents.md ${coreQuery}`;
 
   // 1. Probe: Get just the count (page 1, per_page 1) to be fast
@@ -163,7 +176,25 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
         await wait(waitTime);
         return recursiveSearch(token, minSize, maxSize, allNodeIds); // Retry
       }
+      if (response.status === 422) {
+        // Validation error - might be invalid range syntax
+        const errorBody = await response.text().catch(() => '');
+        console.error(`      ❌ Validation Error (422) for range ${rangeStr}`);
+        console.error(`      Query: ${probeQuery}`);
+        if (errorBody) {
+          try {
+            const errorJson = JSON.parse(errorBody);
+            console.error(`      Error details: ${JSON.stringify(errorJson, null, 2)}`);
+          } catch {
+            console.error(`      Error message: ${errorBody}`);
+          }
+        }
+        // Skip this range - might be invalid syntax (e.g., size:0..X)
+        return;
+      }
       console.error(`      ❌ Probe Error: ${response.status}`);
+      const errorBody = await response.text().catch(() => '');
+      if (errorBody) console.error(`      Error details: ${errorBody.substring(0, 200)}`);
       return;
     }
 
@@ -207,11 +238,12 @@ async function searchAllRepos(token) {
   const allNodeIds = new Map(); // Map<NodeID, FilePath>
 
   console.log(`🔍 Starting Adaptive Recursive Search for "filename:agents.md"...`);
-  console.log(`   Scope: 0KB to 100KB (Full Ecosystem Scan)`);
+  console.log(`   Scope: 1 byte to 100KB (Full Ecosystem Scan)`);
 
   // Recursively allow the algorithm to find data wherever it is.
   // This handles both "Small Templates" (1KB) and "Huge Configs" (50KB) equally well.
-  await recursiveSearch(token, 0, 100000, allNodeIds);
+  // Note: Starting from 1 instead of 0 because GitHub API may reject size:0..X queries
+  await recursiveSearch(token, 1, 100000, allNodeIds);
 
   console.log(`✅ Discovery complete. Total unique repos found: ${allNodeIds.size}`);
   return allNodeIds;
