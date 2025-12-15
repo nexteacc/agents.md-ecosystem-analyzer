@@ -63,6 +63,10 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
         },
       });
 
+      if (response.status === 401) {
+        throw new Error("GitHub API 401 Unauthorized. Your TOKEN is invalid or expired.");
+      }
+
       if (response.status === 403 || response.status === 429) {
         const resetTime = response.headers.get('x-ratelimit-reset');
         const waitTime = resetTime ? (parseInt(resetTime) * 1000) - Date.now() + 1000 : 60000;
@@ -144,6 +148,10 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
         'User-Agent': 'Agents-MD-Analyzer-Bot'
       },
     });
+
+    if (response.status === 401) {
+      throw new Error("GitHub API 401 Unauthorized. Your TOKEN is invalid or expired.");
+    }
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 429) {
@@ -295,16 +303,9 @@ async function main() {
     const idMap = await searchAllRepos(GITHUB_TOKEN);
 
     if (idMap.size === 0) {
-      console.warn("⚠️ No repositories found. Skipping update.");
-      // Create empty file to avoid frontend errors if it's the first run
-      if (!fs.existsSync(path.join(publicDir, 'data.json'))) {
-        fs.writeFileSync(path.join(publicDir, 'data.json'), JSON.stringify({
-          timestamp: new Date().toISOString(),
-          count: 0,
-          repos: []
-        }));
-      }
-      return;
+      console.error("❌ No repositories found. This likely means the GitHub Token is invalid or the API is blocking requests.");
+      // @ts-ignore
+      process.exit(1); // Fail the workflow so the user knows!
     }
 
     // 2. Enrichment
