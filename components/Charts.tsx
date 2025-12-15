@@ -92,11 +92,25 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-[400px] flex flex-col">
       <h3 className="text-sm font-semibold text-gray-900 mb-6">Most Popular Repositories</h3>
       <div className="flex-grow text-xs" style={{ overflow: 'visible' }}>
+        {/* Style to remove focus outline from recharts wrapper */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          .recharts-wrapper:focus {
+            outline: none !important;
+          }
+        `}} />
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
             margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+            onClick={(data) => {
+              // Handle bar background clicks if needed
+              if (data && data.activePayload && data.activePayload.length) {
+                const repo = data.activePayload[0].payload;
+                window.open(`https://github.com/${repo.fullName}/blob/HEAD/agents.md`, '_blank');
+              }
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
             <XAxis type="number" hide />
@@ -104,27 +118,60 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
               type="category"
               dataKey="name"
               width={200}
-              tick={{ fill: '#6b7280', fontSize: 11 }}
               interval={0}
               axisLine={false}
               tickLine={false}
+              tick={({ x, y, payload }) => {
+                // Custom clickable tick
+                const repo = data.find(d => d.name === payload.value);
+                return (
+                  <g transform={`translate(${x},${y})`} style={{ cursor: 'pointer' }}>
+                    <text
+                      x={0}
+                      y={0}
+                      dy={4}
+                      textAnchor="end"
+                      fill="#6b7280"
+                      fontSize={11}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Find full repo data to get fullName
+                        if (repo) {
+                          window.open(`https://github.com/${repo.fullName}/blob/HEAD/agents.md`, '_blank');
+                        }
+                      }}
+                      className="hover:fill-blue-600 hover:underline"
+                    >
+                      {payload.value}
+                    </text>
+                  </g>
+                );
+              }}
             />
             <Tooltip
-              cursor={{ fill: '#f9fafb' }}
+              cursor={{ fill: '#f9fafb', cursor: 'pointer' }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
                   return (
-                    <div className="bg-white p-2 border border-gray-100 shadow-sm rounded text-xs">
+                    <div className="bg-white p-2 border border-blue-100 shadow-sm rounded text-xs">
                       <p className="font-semibold text-gray-800">{data.fullName}</p>
-                      <p className="text-gray-500">Stars: {data.stars.toLocaleString()}</p>
+                      <p className="text-gray-500 mb-1">Stars: {data.stars.toLocaleString()}</p>
+                      <p className="text-blue-500 text-[10px] italic">Click to view agents.md ↗</p>
                     </div>
                   );
                 }
                 return null;
               }}
             />
-            <Bar dataKey="stars" fill="#202123" radius={[0, 2, 2, 0]} barSize={16} />
+            <Bar
+              dataKey="stars"
+              fill="#202123"
+              radius={[0, 2, 2, 0]}
+              barSize={16}
+              cursor="pointer"
+            // Individual bar click handled by parent BarChart onClick or we can add specific here
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

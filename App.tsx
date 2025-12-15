@@ -118,7 +118,7 @@ const App: React.FC = () => {
         <div className="mb-8">
            <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">Agents.md Projects</h1>
            <p className="text-gray-500">
-             集成了 Agents.md 的开源项目
+             Public projects integrating Agents.md 
            </p>
         </div>
 
