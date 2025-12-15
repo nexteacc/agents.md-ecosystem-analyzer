@@ -135,10 +135,11 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
  */
 async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
   const rangeStr = `${minSize}..${maxSize}`;
-  const query = `filename:agents.md fork:false size:${rangeStr}`;
+  const coreQuery = `fork:false size:${rangeStr}`;
+  const probeQuery = `filename:agents.md ${coreQuery}`;
 
   // 1. Probe: Get just the count (page 1, per_page 1) to be fast
-  const probeUrl = `${GITHUB_REST_SEARCH_URL}?q=${encodeURIComponent(query)}&per_page=1`;
+  const probeUrl = `${GITHUB_REST_SEARCH_URL}?q=${encodeURIComponent(probeQuery)}&per_page=1`;
 
   try {
     const response = await fetch(probeUrl, {
@@ -179,13 +180,14 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
     if (totalCount <= 1000) {
       // SAFE ZONE: Fetch all items in this range
       console.log(`      ✅ Fetching all ${totalCount} items in range ${rangeStr}...`);
-      await runSearchSegment(token, `${query} sort:indexed`, allNodeIds);
+      // Pass coreQuery (without filename:) because runSearchSegment adds it
+      await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
     } else {
       // DANGER ZONE: Too many items. Split and recurse.
       if (minSize === maxSize) {
         console.warn(`      ⚠️ Critical clustering: >1000 items at exact size ${minSize} bytes. Fetching top 1000.`);
-        // Cannot split further. Best effort: fetch top 1000 sorted by index.
-        await runSearchSegment(token, `${query} sort:indexed`, allNodeIds);
+        // Cannot split further. Best effort.
+        await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
         return;
       }
 
