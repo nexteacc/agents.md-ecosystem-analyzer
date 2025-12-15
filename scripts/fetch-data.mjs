@@ -135,7 +135,7 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
  */
 async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
   const rangeStr = `${minSize}..${maxSize}`;
-  const query = `fork:false size:${rangeStr}`;
+  const query = `filename:agents.md fork:false size:${rangeStr}`;
 
   // 1. Probe: Get just the count (page 1, per_page 1) to be fast
   const probeUrl = `${GITHUB_REST_SEARCH_URL}?q=${encodeURIComponent(query)}&per_page=1`;
