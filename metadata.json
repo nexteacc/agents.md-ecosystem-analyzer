@@ -1,0 +1,5 @@
+{
+  "name": "Agents.md Ecosystem Analyzer",
+  "description": "A serverless visualization dashboard tracking the adoption of 'agents.md' across GitHub. Powered by Vercel and GitHub GraphQL API with automated daily caching.",
+  "requestFramePermissions": []
+}

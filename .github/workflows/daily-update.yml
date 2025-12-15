@@ -1,0 +1,41 @@
+name: Update Ecosystem Data
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger via GitHub UI
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - 'public/data.json' # Prevent infinite loop when bot updates data
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Run Data Fetch Script
+        env:
+          # You must add GH_PAT to your repository secrets
+          GH_PAT: ${{ secrets.GH_PAT }} 
+        run: node scripts/fetch-data.mjs
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name 'Agents.md Bot'
+          git config --global user.email 'bot@agents.md'
+          git add public/data.json
+          # Removed [skip ci] so Vercel builds the new data
+          git diff --quiet && git diff --staged --quiet || (git commit -m "data: update ecosystem snapshot" && git push)
