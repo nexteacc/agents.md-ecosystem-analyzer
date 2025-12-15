@@ -69,7 +69,7 @@ const App: React.FC = () => {
   const LoadingScreen = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
       <div className="w-10 h-10 bg-openai-black rounded-full mb-6 flex items-center justify-center animate-pulse">
-         <div className="w-4 h-4 bg-white rounded-[1px]"></div>
+        <div className="w-4 h-4 bg-white rounded-[1px]"></div>
       </div>
       <h2 className="text-xl font-semibold text-openai-black mb-2">Analyzing Ecosystem</h2>
       <p className="text-gray-500 text-sm max-w-md text-center mb-6">
@@ -81,16 +81,16 @@ const App: React.FC = () => {
 
   const ErrorScreen = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-       <div className="p-4 bg-red-50 rounded-lg border border-red-100 max-w-md text-center">
-         <h2 className="text-red-800 font-semibold mb-2">Unavailable</h2>
-         <p className="text-red-600 text-sm">{error}</p>
-         <button 
-           onClick={() => window.location.reload()} 
-           className="mt-4 px-4 py-2 bg-white border border-red-200 text-red-700 rounded text-sm hover:bg-red-50 transition-colors"
-         >
-           Try Again
-         </button>
-       </div>
+      <div className="p-4 bg-red-50 rounded-lg border border-red-100 max-w-md text-center">
+        <h2 className="text-red-800 font-semibold mb-2">Unavailable</h2>
+        <p className="text-red-600 text-sm">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-white border border-red-200 text-red-700 rounded text-sm hover:bg-red-50 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
     </div>
   );
 
@@ -104,9 +104,9 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-center relative">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 bg-openai-black rounded-full flex items-center justify-center">
-                <div className="w-2.5 h-2.5 bg-white rounded-[1px]"></div>
+              <div className="w-2.5 h-2.5 bg-white rounded-[1px]"></div>
             </div>
-            <span className="font-semibold tracking-tight">Agents.md Dashboard</span>
+            <span className="font-semibold tracking-tight">AGENTS.md Dashboard</span>
           </div>
           <div className="absolute right-6 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
             <CalendarClock className="w-3.5 h-3.5" />
@@ -117,10 +117,11 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
-           <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">Agents.md Projects</h1>
-           <p className="text-gray-500">
-             Public projects integrating Agents.md. Only repositories with stars, forks, or created within the last 7 days are included.
-           </p>
+          <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">AGENTS.md Projects</h1>
+          <p className="text-gray-500">
+            Explore real-case <a href="https://agents.md/" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-openai-green transition-colors">AGENTS.md</a> files from the open source community.
+            See how top projects structure their agent definitions and find inspiration for your own. Only repositories with stars, forks, or created within the last 7 days are included.
+          </p>
         </div>
 
         <StatsCards stats={stats} />
@@ -129,57 +130,56 @@ const App: React.FC = () => {
           <TopReposBarChart repos={repos} />
           <LanguagePieChart stats={stats} />
         </div>
-        
+
         <div className="mb-8">
           <div className="bg-white p-6 rounded-lg border border-gray-200 flex flex-col h-[320px]">
-             <h3 className="text-sm font-semibold text-gray-900 mb-4">Trending Topics</h3>
-             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar content-start">
-               {stats.topTopics.map((topic) => {
-                 const isSelected = selectedTopics.includes(topic.name);
-                 return (
-                   <button
-                     key={topic.name}
-                     onClick={() => {
-                       if (isSelected) {
-                         setSelectedTopics(selectedTopics.filter(t => t !== topic.name));
-                       } else {
-                         setSelectedTopics([...selectedTopics, topic.name]);
-                       }
-                     }}
-                     className={`px-2.5 py-1 rounded text-xs border transition-colors ${
-                       isSelected
-                         ? 'bg-openai-green text-white border-openai-green hover:bg-openai-green-hover'
-                         : 'text-gray-600 bg-gray-50 border-gray-100 hover:bg-gray-100'
-                     }`}
-                   >
-                     #{topic.name} <span className={isSelected ? 'text-white/80' : 'text-gray-400'}>{topic.count}</span>
-                   </button>
-                 );
-               })}
-             </div>
-             {selectedTopics.length > 0 && (
-               <div className="mt-4 pt-4 border-t border-gray-100">
-                 <div className="flex items-center gap-2 flex-wrap">
-                   <span className="text-xs text-gray-500">Filtered by:</span>
-                   {selectedTopics.map(topic => (
-                     <button
-                       key={topic}
-                       onClick={() => setSelectedTopics(selectedTopics.filter(t => t !== topic))}
-                       className="px-2 py-0.5 rounded text-xs bg-openai-green text-white hover:bg-openai-green-hover transition-colors flex items-center gap-1"
-                     >
-                       #{topic}
-                       <span className="ml-1">×</span>
-                     </button>
-                   ))}
-                   <button
-                     onClick={() => setSelectedTopics([])}
-                     className="text-xs text-gray-500 hover:text-gray-700 underline"
-                   >
-                     Clear all
-                   </button>
-                 </div>
-               </div>
-             )}
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Trending Topics</h3>
+            <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar content-start">
+              {stats.topTopics.map((topic) => {
+                const isSelected = selectedTopics.includes(topic.name);
+                return (
+                  <button
+                    key={topic.name}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedTopics(selectedTopics.filter(t => t !== topic.name));
+                      } else {
+                        setSelectedTopics([...selectedTopics, topic.name]);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs border transition-colors ${isSelected
+                      ? 'bg-openai-green text-white border-openai-green hover:bg-openai-green-hover'
+                      : 'text-gray-600 bg-gray-50 border-gray-100 hover:bg-gray-100'
+                      }`}
+                  >
+                    #{topic.name} <span className={isSelected ? 'text-white/80' : 'text-gray-400'}>{topic.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedTopics.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500">Filtered by:</span>
+                  {selectedTopics.map(topic => (
+                    <button
+                      key={topic}
+                      onClick={() => setSelectedTopics(selectedTopics.filter(t => t !== topic))}
+                      className="px-2 py-0.5 rounded text-xs bg-openai-green text-white hover:bg-openai-green-hover transition-colors flex items-center gap-1"
+                    >
+                      #{topic}
+                      <span className="ml-1">×</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSelectedTopics([])}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
