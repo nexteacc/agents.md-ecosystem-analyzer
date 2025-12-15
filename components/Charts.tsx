@@ -91,7 +91,7 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 h-[400px] flex flex-col">
       <h3 className="text-sm font-semibold text-gray-900 mb-6">Most Popular Repositories</h3>
-      <div className="flex-grow text-xs">
+      <div className="flex-grow text-xs" style={{ overflow: 'visible' }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -103,7 +103,7 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
             <YAxis
               type="category"
               dataKey="name"
-              width={150}
+              width={200}
               tick={{ fill: '#6b7280', fontSize: 11 }}
               interval={0}
               axisLine={false}

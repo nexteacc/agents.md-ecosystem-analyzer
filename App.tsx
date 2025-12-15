@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StatsCards } from './components/StatsCards';
-import { LanguagePieChart, TopReposBarChart, LicenseChart } from './components/Charts';
+import { LanguagePieChart, TopReposBarChart } from './components/Charts';
 import { RepoTable } from './components/RepoTable';
 import { RepositoryNode, AnalysisStats } from './types';
 import { fetchEcosystemData } from './services/githubService';
@@ -116,9 +116,9 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
-           <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">Ecosystem Overview</h1>
+           <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">Agents.md Projects</h1>
            <p className="text-gray-500">
-             Daily snapshot of the open-source AI agent ecosystem.
+             集成了 Agents.md 的开源项目
            </p>
         </div>
 
@@ -129,11 +129,8 @@ const App: React.FC = () => {
           <LanguagePieChart stats={stats} />
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-1">
-             <LicenseChart stats={stats} />
-          </div>
-          <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-gray-200 flex flex-col h-[320px]">
+        <div className="mb-8">
+          <div className="bg-white p-6 rounded-lg border border-gray-200 flex flex-col h-[320px]">
              <h3 className="text-sm font-semibold text-gray-900 mb-4">Trending Topics</h3>
              <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar content-start">
                {stats.topTopics.map((topic) => (

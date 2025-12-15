@@ -45,6 +45,12 @@
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #9ca3af;
       }
+      /* Fix Y-axis text overflow in bar chart */
+      .recharts-cartesian-axis-tick-value {
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: nowrap !important;
+      }
     </style>
   <script type="importmap">
 {
