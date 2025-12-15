@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StatsCards } from './components/StatsCards';
-import { LanguagePieChart, TopReposBarChart } from './components/Charts';
+import { LanguagePieChart, TopReposBarChart, AdoptionTrendChart, TopTopicsBarChart } from './components/Charts';
 import { RepoTable } from './components/RepoTable';
 import { RepositoryNode, AnalysisStats } from './types';
 import { fetchEcosystemData } from './services/githubService';
@@ -118,10 +118,19 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">AGENTS.md Projects</h1>
-          <p className="text-gray-500">
-            Explore real-case <a href="https://agents.md/" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-openai-green transition-colors">AGENTS.md</a> files from the open source community.
-            See how top projects structure their agent definitions and find inspiration for your own. Only repositories with stars, forks, or created within the last 7 days are included.
-          </p>
+          <div className="text-gray-500 space-y-2">
+            <p>
+              Explore real-case <a href="https://agents.md/" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-openai-green transition-colors">AGENTS.md</a> integrations from the open source community.
+              See how top projects structure their agent definitions and find inspiration for your own.
+            </p>
+            <p>
+              As more projects integrate AI into their workflows, a new documentation pattern is starting to emerge.
+              People say <span className="font-medium">README.md for humans, AGENTS.md for AI.</span>
+            </p>
+            <p className="text-sm text-gray-400 italic">
+              (Only repositories with stars, forks, or created within the last 7 days are included.)
+            </p>
+          </div>
         </div>
 
         <StatsCards stats={stats} />
@@ -132,6 +141,10 @@ const App: React.FC = () => {
         </div>
 
         <div className="mb-8">
+          <AdoptionTrendChart repos={repos} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg border border-gray-200 flex flex-col h-[320px]">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Trending Topics</h3>
             <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar content-start">
@@ -181,6 +194,7 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
+          <TopTopicsBarChart stats={stats} />
         </div>
 
         <RepoTable repos={repos} selectedTopics={selectedTopics} onTopicChange={setSelectedTopics} />

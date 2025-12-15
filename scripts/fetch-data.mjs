@@ -122,58 +122,30 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
   }
 }
 
-/**
- * RECURSIVE SEARCH STRATEGY (Adaptive Bisection)
- * 
- * Instead of guessing step sizes, we ask GitHub: "How many files in this range?"
- * - If count <= 1000: Fetch them all. (Safe)
- * - If count > 1000: Split range in half and recurse. (Adaptive)
- * 
- * Logic covers 0 to 100KB (covering 99.9% of all agents.md files).
- * This works like a "Daily Full Scan" that scales to millions of files
- * by trading time (more requests) for space (unlimited result capacity).
- */
-async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
-  // GitHub Code Search API size filter syntax (legacy code search):
-  // - 精确大小: size:n (文件大小正好等于 n 字节)
-  // - 大小比较: size:>n, size:>=n, size:<n, size:<=n
-  // - 区间范围: size:n..m (介于 n 到 m 字节)
-  // 
-  // Note: 不支持同时组合使用 size:>=X size:<=Y (会导致 422 错误)
-  // 应该使用范围语法 size:X..Y 或分别查询
-
-  // Build size filter based on range
-  let sizeFilter;
+async function recursiveSearch(token, minSize, maxSize, allNodeIds, sizeDistribution) {
   const rangeStr = `${minSize}..${maxSize}`;
 
+  let sizeFilter;
   if (minSize === maxSize) {
-    // 精确大小：使用 size:n 语法（更符合规范）
     sizeFilter = `size:${minSize}`;
   } else {
-    // 区间范围：使用 size:n..m 语法
     sizeFilter = `size:${rangeStr}`;
   }
 
-  // Safety check: GitHub API may reject very large ranges
-  // Pre-split large ranges to avoid 422 errors
-  const MAX_SAFE_RANGE = 50000; // 50KB - empirically safe limit
+  const MAX_SAFE_RANGE = 50000;
   const rangeSize = maxSize - minSize;
 
   if (rangeSize > MAX_SAFE_RANGE && minSize !== maxSize) {
-    // Range is too large, split it BEFORE querying API
     const mid = Math.floor((minSize + maxSize) / 2);
     console.log(`      ⚠️ Range ${rangeStr} too large (${rangeSize} bytes > ${MAX_SAFE_RANGE}). Pre-splitting...`);
-    await recursiveSearch(token, minSize, mid, allNodeIds);
-    await recursiveSearch(token, mid + 1, maxSize, allNodeIds);
+    await recursiveSearch(token, minSize, mid, allNodeIds, sizeDistribution);
+    await recursiveSearch(token, mid + 1, maxSize, allNodeIds, sizeDistribution);
     return;
   }
 
-  // NOTE: 'fork' qualifier is NOT supported in Code Search API (causes 422).
-  // We filter forks manually in the enrichment phase.
-  const coreQuery = `${sizeFilter}`;
+  const coreQuery = `NOT is:fork ${sizeFilter}`;
   const probeQuery = `filename:agents.md ${coreQuery}`;
 
-  // 1. Probe: Get just the count (page 1, per_page 1) to be fast
   const probeUrl = `${GITHUB_REST_SEARCH_URL}?q=${encodeURIComponent(probeQuery)}&per_page=1`;
 
   try {
@@ -191,32 +163,19 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 429) {
-        // Rate limit handling
         const resetTime = response.headers.get('x-ratelimit-reset');
         const waitTime = resetTime ? (parseInt(resetTime) * 1000) - Date.now() + 1000 : 60000;
         console.warn(`      ⚠️ Rate limit hit. Waiting ${Math.ceil(waitTime / 1000)}s...`);
         await wait(waitTime);
-        return recursiveSearch(token, minSize, maxSize, allNodeIds); // Retry
+        return recursiveSearch(token, minSize, maxSize, allNodeIds, sizeDistribution); // Retry
       }
       if (response.status === 422) {
-        // Validation error - might be invalid range syntax
         const errorBody = await response.text().catch(() => '');
         console.error(`      ❌ Validation Error (422) for range ${rangeStr}`);
-        console.error(`      Query: ${probeQuery}`);
-        if (errorBody) {
-          try {
-            const errorJson = JSON.parse(errorBody);
-            console.error(`      Error details: ${JSON.stringify(errorJson, null, 2)}`);
-          } catch {
-            console.error(`      Error message: ${errorBody}`);
-          }
-        }
-        // Skip this range - might be invalid syntax (e.g., size:0..X)
+        // Skip this range - might be invalid syntax
         return;
       }
       console.error(`      ❌ Probe Error: ${response.status}`);
-      const errorBody = await response.text().catch(() => '');
-      if (errorBody) console.error(`      Error details: ${errorBody.substring(0, 200)}`);
       return;
     }
 
@@ -225,21 +184,50 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
 
     console.log(`   🔎 Probe ${rangeStr}: ${totalCount} items`);
 
-    // 2. Decision logic
     if (totalCount === 0) {
-      return; // Empty range, skip
+      return;
     }
 
     if (totalCount <= 1000) {
-      // SAFE ZONE: Fetch all items in this range
       console.log(`      ✅ Fetching all ${totalCount} items in range ${rangeStr}...`);
-      // Pass coreQuery (without filename:) because runSearchSegment adds it
+      
+      // Record statistics based on range midpoint
+      if (totalCount > 0 && sizeDistribution) {
+        const midPoint = Math.floor((minSize + maxSize) / 2);
+        if (midPoint < 1024) {
+          sizeDistribution['500B-1KB'] += totalCount;
+        } else if (midPoint < 5120) {
+          sizeDistribution['1KB-5KB'] += totalCount;
+        } else if (midPoint < 10240) {
+          sizeDistribution['5KB-10KB'] += totalCount;
+        } else if (midPoint < 15360) {
+          sizeDistribution['10KB-15KB'] += totalCount;
+        } else if (midPoint <= 20480) {
+          sizeDistribution['15KB-20KB'] += totalCount;
+        }
+      }
+      
       await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
     } else {
-      // DANGER ZONE: Too many items. Split and recurse.
       if (minSize === maxSize) {
         console.warn(`      ⚠️ Critical clustering: >1000 items at exact size ${minSize} bytes. Fetching top 1000.`);
-        // Cannot split further. Best effort.
+        
+        // Record statistics for critical clustering case
+        if (sizeDistribution) {
+          const midPoint = minSize;
+          if (midPoint < 1024) {
+            sizeDistribution['500B-1KB'] += 1000;
+          } else if (midPoint < 5120) {
+            sizeDistribution['1KB-5KB'] += 1000;
+          } else if (midPoint < 10240) {
+            sizeDistribution['5KB-10KB'] += 1000;
+          } else if (midPoint < 15360) {
+            sizeDistribution['10KB-15KB'] += 1000;
+          } else if (midPoint <= 20480) {
+            sizeDistribution['15KB-20KB'] += 1000;
+          }
+        }
+        
         await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
         return;
       }
@@ -247,8 +235,8 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
       const mid = Math.floor((minSize + maxSize) / 2);
       console.log(`      ⚡ Split: ${totalCount} > 1000. Bisecting -> [${minSize}..${mid}] & [${mid + 1}..${maxSize}]`);
 
-      await recursiveSearch(token, minSize, mid, allNodeIds);
-      await recursiveSearch(token, mid + 1, maxSize, allNodeIds);
+      await recursiveSearch(token, minSize, mid, allNodeIds, sizeDistribution);
+      await recursiveSearch(token, mid + 1, maxSize, allNodeIds, sizeDistribution);
     }
 
   } catch (e) {
@@ -258,16 +246,28 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
 
 async function searchAllRepos(token) {
   const allNodeIds = new Map(); // Map<NodeID, FilePath>
+  const sizeDistribution = {
+    '500B-1KB': 0,
+    '1KB-5KB': 0,
+    '5KB-10KB': 0,
+    '10KB-15KB': 0,
+    '15KB-20KB': 0,
+  };
 
   console.log(`🔍 Starting Adaptive Recursive Search for "filename:agents.md"...`);
-  console.log(`   Scope: 1 byte to 100KB (Full Ecosystem Scan)`);
+  console.log(`   Scope: 500 bytes to 20KB (Optimized Ecosystem Scan)`);
 
-  // Recursively allow the algorithm to find data wherever it is.
-  // This handles both "Small Templates" (1KB) and "Huge Configs" (50KB) equally well.
-  // Note: Starting from 1 instead of 0 because GitHub API may reject size:0..X queries
-  await recursiveSearch(token, 1, 100000, allNodeIds);
+  await recursiveSearch(token, 500, 20000, allNodeIds, sizeDistribution);
 
   console.log(`✅ Discovery complete. Total unique repos found: ${allNodeIds.size}`);
+  
+  console.log(`\n📊 File Size Distribution:`);
+  console.log(`   500B - 1KB:  ${sizeDistribution['500B-1KB']} files`);
+  console.log(`   1KB - 5KB:   ${sizeDistribution['1KB-5KB']} files`);
+  console.log(`   5KB - 10KB:  ${sizeDistribution['5KB-10KB']} files`);
+  console.log(`   10KB - 15KB: ${sizeDistribution['10KB-15KB']} files`);
+  console.log(`   15KB - 20KB: ${sizeDistribution['15KB-20KB']} files`);
+  
   return allNodeIds;
 }
 
@@ -375,6 +375,9 @@ async function main() {
     const now = new Date().getTime();
 
     const highQualityRepos = repos.filter(repo => {
+      // Explicitly exclude forks since API search doesn't support filtering them reliably
+      if (repo.isFork) return false;
+
       const hasStars = repo.stargazerCount > 0;
       const hasForks = repo.forkCount > 0;
       const isNew = (now - new Date(repo.createdAt).getTime()) < ONE_WEEK_MS;

@@ -11,6 +11,8 @@ import {
   Pie,
   Cell,
   Sector,
+  LineChart,
+  Line,
 } from 'recharts';
 import { RepositoryNode, AnalysisStats } from '../types';
 
@@ -208,6 +210,61 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
   );
 };
 
+export const TopTopicsBarChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) => {
+  const data = stats.topTopics.slice(0, 15).map(topic => ({
+    name: topic.name,
+    count: topic.count,
+  }));
+
+  return (
+    <div className="bg-white p-6 rounded-lg border border-gray-200 h-[320px] flex flex-col">
+      <h3 className="text-sm font-semibold text-gray-900 mb-6">Top Topics</h3>
+      <div className="flex-grow text-xs" style={{ overflow: 'visible' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
+            <XAxis type="number" hide />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={150}
+              interval={0}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#6b7280', fontSize: 11 }}
+            />
+            <Tooltip
+              cursor={{ fill: '#f9fafb' }}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-2 border border-gray-100 shadow-sm rounded text-xs">
+                      <p className="font-semibold text-gray-800 mb-1">#{data.name}</p>
+                      <p className="text-gray-500">Repositories: {data.count.toLocaleString()}</p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar
+              dataKey="count"
+              fill="#202123"
+              radius={[0, 2, 2, 0]}
+              barSize={16}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
 export const LicenseChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) => {
   const data = stats.licenseDistribution.slice(0, 5);
 
@@ -229,6 +286,151 @@ export const LicenseChart: React.FC<{ stats: AnalysisStats }> = ({ stats }) => {
             <Tooltip cursor={{ fill: '#f9fafb' }} content={<CustomTooltip />} />
             <Bar dataKey="count" fill="#10a37f" radius={[2, 2, 0, 0]} barSize={32} />
           </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+export const AdoptionTrendChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos }) => {
+  const [timeRange, setTimeRange] = React.useState<'week' | 'month'>('week');
+
+  // Calculate data based on selected time range (week or month)
+  // Data is read from JSON and filtered by repository creation date
+  const getTrendData = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dataPoints: Array<{ date: string; fullDate: string; count: number }> = [];
+
+    if (timeRange === 'week') {
+      // Week view: Last 7 days, daily breakdown
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        // Count repositories created on this day
+        const count = repos.filter(repo => {
+          const repoDate = new Date(repo.createdAt);
+          return repoDate >= date && repoDate < nextDate;
+        }).length;
+
+        // Format date: Dec 15
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        dataPoints.push({
+          date: dateStr,
+          fullDate: date.toISOString().split('T')[0],
+          count,
+        });
+      }
+    } else {
+      // Month view: Last 30 days, daily breakdown
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        // Count repositories created on this day
+        const count = repos.filter(repo => {
+          const repoDate = new Date(repo.createdAt);
+          return repoDate >= date && repoDate < nextDate;
+        }).length;
+
+        // Format date: Dec 15
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        dataPoints.push({
+          date: dateStr,
+          fullDate: date.toISOString().split('T')[0],
+          count,
+        });
+      }
+    }
+
+    return dataPoints;
+  };
+
+  const data = getTrendData();
+
+  return (
+    <div className="bg-white p-6 rounded-lg border border-gray-200 h-[320px] flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-sm font-semibold text-gray-900">New Projects Integrating Trend</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTimeRange('week')}
+            className={`px-3 py-1 text-xs rounded border transition-colors ${
+              timeRange === 'week'
+                ? 'bg-openai-green text-white border-openai-green'
+                : 'text-gray-600 bg-gray-50 border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            Week
+          </button>
+          <button
+            onClick={() => setTimeRange('month')}
+            className={`px-3 py-1 text-xs rounded border transition-colors ${
+              timeRange === 'month'
+                ? 'bg-openai-green text-white border-openai-green'
+                : 'text-gray-600 bg-gray-50 border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            Month
+          </button>
+        </div>
+      </div>
+      <div className="flex-grow text-xs">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+            <XAxis
+              dataKey="date"
+              tick={{ fill: '#6b7280', fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              interval={timeRange === 'month' ? 4 : 0} // Show every 5th label for month view
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#9ca3af', fontSize: 11 }}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ stroke: '#202123', strokeWidth: 1, strokeDasharray: '5 5' }}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-2 border border-gray-100 shadow-sm rounded text-xs">
+                      <p className="font-semibold text-gray-800 mb-1">{data.fullDate}</p>
+                      <p className="text-gray-900 font-medium">
+                        New Projects: {data.count}
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="count"
+              stroke="#202123"
+              strokeWidth={2}
+              dot={{ fill: '#202123', r: 4 }}
+              activeDot={{ r: 6, fill: '#202123' }}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
