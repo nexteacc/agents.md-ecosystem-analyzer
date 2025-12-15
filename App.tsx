@@ -4,7 +4,7 @@ import { LanguagePieChart, TopReposBarChart, AdoptionTrendChart, TopTopicsBarCha
 import { RepoTable } from './components/RepoTable';
 import { RepositoryNode, AnalysisStats } from './types';
 import { fetchEcosystemData } from './services/githubService';
-import { Loader2, CalendarClock } from 'lucide-react';
+import { Loader2, CalendarClock, Github } from 'lucide-react';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -108,9 +108,21 @@ const App: React.FC = () => {
             </div>
             <span className="font-semibold tracking-tight">AGENTS.md Dashboard</span>
           </div>
-          <div className="absolute right-6 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-            <CalendarClock className="w-3.5 h-3.5" />
-            <span>Updated: {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : 'Today'}</span>
+          <div className="absolute right-6 flex items-center gap-3">
+            <a
+              href="https://github.com/nexteacc/agents.md-ecosystem-analyzer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-gray-600 hover:text-openai-green transition-colors px-3 py-1.5 rounded-full border border-gray-100 hover:border-openai-green bg-white"
+              title="View source on GitHub"
+            >
+              <Github className="w-4 h-4" />
+              <span className="hidden sm:inline">Source</span>
+            </a>
+            <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+              <CalendarClock className="w-3.5 h-3.5" />
+              <span>Updated: {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : 'Today'}</span>
+            </div>
           </div>
         </div>
       </header>

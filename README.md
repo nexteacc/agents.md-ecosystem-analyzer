@@ -12,6 +12,8 @@ This application acts as a central registry and analytics platform for AI Agents
 -   **Smart Filtering**: Filters out low-quality forks and empty templates.
 -   **Zero-Maintenance**: Fully automated data pipeline.
 
+> **Data Quality**: All `AGENTS.md` file paths are validated during collection to ensure accuracy. Data refreshes daily via GitHub Actions.
+
 ## 🏗 Architecture: Git Scraping
 
 This project uses a serverless **Git Scraping** architecture to ensure high performance and zero database costs.

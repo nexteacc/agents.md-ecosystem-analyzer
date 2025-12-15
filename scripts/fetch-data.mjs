@@ -15,6 +15,7 @@ const NODES_QUERY = `
   query GetRepositoryDetails($ids: [ID!]!) {
     nodes(ids: $ids) {
       ... on Repository {
+        id
         nameWithOwner
         url
         description
@@ -38,6 +39,29 @@ const NODES_QUERY = `
 `;
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Validates if a file exists at the specified path in a repository
+ * Uses the actual discovered path from Code Search API
+ */
+async function validateFileExists(owner, repo, filePath, token) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Agents-MD-Analyzer-Bot'
+      },
+    });
+
+    return response.status === 200;
+  } catch (error) {
+    return false;
+  }
+}
 
 /**
  * Searches specific query segment handling pagination up to 1000 items (API Limit)
@@ -190,7 +214,7 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds, sizeDistribu
 
     if (totalCount <= 1000) {
       console.log(`      ✅ Fetching all ${totalCount} items in range ${rangeStr}...`);
-      
+
       // Record statistics based on range midpoint
       if (totalCount > 0 && sizeDistribution) {
         const midPoint = Math.floor((minSize + maxSize) / 2);
@@ -206,12 +230,12 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds, sizeDistribu
           sizeDistribution['15KB-20KB'] += totalCount;
         }
       }
-      
+
       await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
     } else {
       if (minSize === maxSize) {
         console.warn(`      ⚠️ Critical clustering: >1000 items at exact size ${minSize} bytes. Fetching top 1000.`);
-        
+
         // Record statistics for critical clustering case
         if (sizeDistribution) {
           const midPoint = minSize;
@@ -227,7 +251,7 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds, sizeDistribu
             sizeDistribution['15KB-20KB'] += 1000;
           }
         }
-        
+
         await runSearchSegment(token, `${coreQuery} sort:indexed`, allNodeIds);
         return;
       }
@@ -260,14 +284,14 @@ async function searchAllRepos(token) {
   await recursiveSearch(token, 500, 20000, allNodeIds, sizeDistribution);
 
   console.log(`✅ Discovery complete. Total unique repos found: ${allNodeIds.size}`);
-  
+
   console.log(`\n📊 File Size Distribution:`);
   console.log(`   500B - 1KB:  ${sizeDistribution['500B-1KB']} files`);
   console.log(`   1KB - 5KB:   ${sizeDistribution['1KB-5KB']} files`);
   console.log(`   5KB - 10KB:  ${sizeDistribution['5KB-10KB']} files`);
   console.log(`   10KB - 15KB: ${sizeDistribution['10KB-15KB']} files`);
   console.log(`   15KB - 20KB: ${sizeDistribution['15KB-20KB']} files`);
-  
+
   return allNodeIds;
 }
 
@@ -321,16 +345,15 @@ async function fetchDetailsForNodes(token, idMap) {
       const result = await response.json();
       if (result.errors) {
         // Sometimes individual nodes are not found (deleted/private), we just log and skip
-        // console.error('GraphQL Partial Errors:', result.errors.length);
       }
 
       const nodes = result.data?.nodes || [];
       const validNodes = nodes.filter((n) => n && n.nameWithOwner);
 
-      // Merge with path information
+      // Attach discovered file path from Code Search
       const nodesWithPaths = validNodes.map(node => ({
         ...node,
-        agentsMdPath: idMap.get(node.id) // Attach the captured path
+        agentsMdPath: idMap.get(node.id) || 'AGENTS.md'
       }));
 
       allRepos = [...allRepos, ...nodesWithPaths];
@@ -367,23 +390,60 @@ async function main() {
     // 2. Enrichment
     const repos = await fetchDetailsForNodes(GITHUB_TOKEN, idMap);
 
-    // 3. Filtering & Quality Control
-    // We cannot filter by stars in the Search API (GitHub limitation for code search),
-    // but we can filter here to keep the dashboard high-quality.
-    // Logic: Keep if (Stars > 0) OR (Forks > 0) OR (Created in last 7 days)
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const now = new Date().getTime();
+    // 3. Filtering & Quality Control + File Path Validation
+    // Logic: Keep repos with ≥10 stars AND verified file exists
+    // This keeps us within GitHub API rate limits (~3,700 repos to validate)
 
-    const highQualityRepos = repos.filter(repo => {
-      // Explicitly exclude forks since API search doesn't support filtering them reliably
-      if (repo.isFork) return false;
+    console.log(`\n🔍 Filtering and validating ${repos.length} repositories...`);
 
-      const hasStars = repo.stargazerCount > 0;
-      const hasForks = repo.forkCount > 0;
-      const isNew = (now - new Date(repo.createdAt).getTime()) < ONE_WEEK_MS;
+    const highQualityRepos = [];
+    let validatedCount = 0;
+    let fileNotFoundCount = 0;
+    let qualityFilteredCount = 0;
 
-      return hasStars || hasForks || isNew;
-    });
+    for (const repo of repos) {
+      // Basic quality filter
+      if (repo.isFork) {
+        qualityFilteredCount++;
+        continue;
+      }
+
+      // Require ≥10 stars to stay within API rate limits
+      // This reduces scope from ~12,000 to ~3,700 repos
+      const hasEnoughStars = repo.stargazerCount >= 10;
+
+      if (!hasEnoughStars) {
+        qualityFilteredCount++;
+        continue;
+      }
+
+      // Validate file exists using the ACTUAL discovered path
+      const [owner, repoName] = repo.nameWithOwner.split('/');
+      const filePath = repo.agentsMdPath; // This is the real path from Code Search
+
+      const fileExists = await validateFileExists(owner, repoName, filePath, GITHUB_TOKEN);
+
+      if (fileExists) {
+        highQualityRepos.push(repo);
+        validatedCount++;
+      } else {
+        fileNotFoundCount++;
+        console.log(`   ⚠️ File not found: ${repo.nameWithOwner}/${filePath}`);
+      }
+
+      // Progress update every 50 repos
+      if ((validatedCount + fileNotFoundCount) % 50 === 0) {
+        console.log(`   Progress: ${validatedCount + fileNotFoundCount} validated...`);
+      }
+
+      // Delay to avoid rate limiting (5000/hour)
+      await wait(100);
+    }
+
+    console.log(`✅ Filtering complete:`);
+    console.log(`   ✓ Valid repos: ${validatedCount}`);
+    console.log(`   ✗ File not found: ${fileNotFoundCount}`);
+    console.log(`   ✗ Quality filtered: ${qualityFilteredCount}`);
 
     // 4. Save to disk
     const output = {
