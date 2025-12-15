@@ -4,6 +4,8 @@ import { ArrowUpDown, ExternalLink, Download, Search, ChevronLeft, ChevronRight,
 
 interface RepoTableProps {
   repos: RepositoryNode[];
+  selectedTopics?: string[];
+  onTopicChange?: (topics: string[]) => void;
 }
 
 type SortField = 'stars' | 'forks' | 'updated' | 'activity';
@@ -114,13 +116,23 @@ const TopicCombobox = ({ topics, selected, onSelect }: { topics: string[], selec
   );
 };
 
-export const RepoTable: React.FC<RepoTableProps> = ({ repos }) => {
+export const RepoTable: React.FC<RepoTableProps> = ({ repos, selectedTopics: externalSelectedTopics, onTopicChange }) => {
   const [sortField, setSortField] = useState<SortField>('stars');
   const [sortDesc, setSortDesc] = useState(true);
   const [filter, setFilter] = useState('');
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [internalSelectedTopics, setInternalSelectedTopics] = useState<string[]>([]);
   const [minStars, setMinStars] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Use external topics if provided, otherwise use internal state
+  const selectedTopics = externalSelectedTopics !== undefined ? externalSelectedTopics : internalSelectedTopics;
+  const setSelectedTopics = (topics: string[]) => {
+    if (onTopicChange) {
+      onTopicChange(topics);
+    } else {
+      setInternalSelectedTopics(topics);
+    }
+  };
 
   // Extract all unique topics
   const allTopics = useMemo(() => {

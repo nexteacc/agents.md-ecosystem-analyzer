@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [repos, setRepos] = useState<RepositoryNode[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   useEffect(() => {
     const initData = async () => {
@@ -118,7 +119,7 @@ const App: React.FC = () => {
         <div className="mb-8">
            <h1 className="text-3xl font-bold text-openai-black mb-2 tracking-tight">Agents.md Projects</h1>
            <p className="text-gray-500">
-             Public projects integrating Agents.md 
+             Public projects integrating Agents.md. Only repositories with stars, forks, or created within the last 7 days are included.
            </p>
         </div>
 
@@ -133,19 +134,56 @@ const App: React.FC = () => {
           <div className="bg-white p-6 rounded-lg border border-gray-200 flex flex-col h-[320px]">
              <h3 className="text-sm font-semibold text-gray-900 mb-4">Trending Topics</h3>
              <div className="flex flex-wrap gap-2 overflow-y-auto custom-scrollbar content-start">
-               {stats.topTopics.map((topic) => (
-                 <span 
-                    key={topic.name} 
-                    className="px-2.5 py-1 rounded text-xs text-gray-600 bg-gray-50 border border-gray-100"
-                 >
-                   #{topic.name} <span className="text-gray-400 ml-1">{topic.count}</span>
-                 </span>
-               ))}
+               {stats.topTopics.map((topic) => {
+                 const isSelected = selectedTopics.includes(topic.name);
+                 return (
+                   <button
+                     key={topic.name}
+                     onClick={() => {
+                       if (isSelected) {
+                         setSelectedTopics(selectedTopics.filter(t => t !== topic.name));
+                       } else {
+                         setSelectedTopics([...selectedTopics, topic.name]);
+                       }
+                     }}
+                     className={`px-2.5 py-1 rounded text-xs border transition-colors ${
+                       isSelected
+                         ? 'bg-openai-green text-white border-openai-green hover:bg-openai-green-hover'
+                         : 'text-gray-600 bg-gray-50 border-gray-100 hover:bg-gray-100'
+                     }`}
+                   >
+                     #{topic.name} <span className={isSelected ? 'text-white/80' : 'text-gray-400'}>{topic.count}</span>
+                   </button>
+                 );
+               })}
              </div>
+             {selectedTopics.length > 0 && (
+               <div className="mt-4 pt-4 border-t border-gray-100">
+                 <div className="flex items-center gap-2 flex-wrap">
+                   <span className="text-xs text-gray-500">Filtered by:</span>
+                   {selectedTopics.map(topic => (
+                     <button
+                       key={topic}
+                       onClick={() => setSelectedTopics(selectedTopics.filter(t => t !== topic))}
+                       className="px-2 py-0.5 rounded text-xs bg-openai-green text-white hover:bg-openai-green-hover transition-colors flex items-center gap-1"
+                     >
+                       #{topic}
+                       <span className="ml-1">×</span>
+                     </button>
+                   ))}
+                   <button
+                     onClick={() => setSelectedTopics([])}
+                     className="text-xs text-gray-500 hover:text-gray-700 underline"
+                   >
+                     Clear all
+                   </button>
+                 </div>
+               </div>
+             )}
           </div>
         </div>
 
-        <RepoTable repos={repos} />
+        <RepoTable repos={repos} selectedTopics={selectedTopics} onTopicChange={setSelectedTopics} />
       </main>
     </div>
   );
