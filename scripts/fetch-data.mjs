@@ -90,8 +90,9 @@ async function runSearchSegment(token, queryStr, allNodeIds) {
         let newItems = 0;
         for (const item of items) {
           if (item.repository?.node_id) {
+            // Store both node_id and the actual file path (e.g. "src/AGENTS.md")
             if (!allNodeIds.has(item.repository.node_id)) {
-              allNodeIds.add(item.repository.node_id);
+              allNodeIds.set(item.repository.node_id, item.path);
               newItems++;
             }
           }
@@ -193,7 +194,7 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
 }
 
 async function searchAllRepos(token) {
-  const allNodeIds = new Set();
+  const allNodeIds = new Map(); // Map<NodeID, FilePath>
 
   console.log(`🔍 Starting Adaptive Recursive Search for "filename:agents.md"...`);
   console.log(`   Scope: 0KB to 100KB (Full Ecosystem Scan)`);
@@ -203,10 +204,11 @@ async function searchAllRepos(token) {
   await recursiveSearch(token, 0, 100000, allNodeIds);
 
   console.log(`✅ Discovery complete. Total unique repos found: ${allNodeIds.size}`);
-  return Array.from(allNodeIds);
+  return allNodeIds;
 }
 
-async function fetchDetailsForNodes(token, ids) {
+async function fetchDetailsForNodes(token, idMap) {
+  const ids = Array.from(idMap.keys());
   // If we have too many IDs, we process them all in batches of 50
   // GraphQL limit is 5000 points per hour.
   // 50 nodes query is ~2 points. 
@@ -260,7 +262,14 @@ async function fetchDetailsForNodes(token, ids) {
 
       const nodes = result.data?.nodes || [];
       const validNodes = nodes.filter((n) => n && n.nameWithOwner);
-      allRepos = [...allRepos, ...validNodes];
+
+      // Merge with path information
+      const nodesWithPaths = validNodes.map(node => ({
+        ...node,
+        agentsMdPath: idMap.get(node.id) // Attach the captured path
+      }));
+
+      allRepos = [...allRepos, ...nodesWithPaths];
 
       // Delay to be safe with secondary limits
       await wait(300);
@@ -283,9 +292,9 @@ async function main() {
     }
 
     // 1. Discovery (Sharded)
-    const ids = await searchAllRepos(GITHUB_TOKEN);
+    const idMap = await searchAllRepos(GITHUB_TOKEN);
 
-    if (ids.length === 0) {
+    if (idMap.size === 0) {
       console.warn("⚠️ No repositories found. Skipping update.");
       // Create empty file to avoid frontend errors if it's the first run
       if (!fs.existsSync(path.join(publicDir, 'data.json'))) {
@@ -299,7 +308,7 @@ async function main() {
     }
 
     // 2. Enrichment
-    const repos = await fetchDetailsForNodes(GITHUB_TOKEN, ids);
+    const repos = await fetchDetailsForNodes(GITHUB_TOKEN, idMap);
 
     // 3. Filtering & Quality Control
     // We cannot filter by stars in the Search API (GitHub limitation for code search),

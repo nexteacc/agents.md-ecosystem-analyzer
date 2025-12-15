@@ -32,6 +32,7 @@ export interface RepositoryNode {
     name: string;
     spdxId?: string;
   } | null;
+  agentsMdPath?: string;
 }
 
 export interface SearchResponse {

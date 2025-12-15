@@ -72,7 +72,7 @@ const App: React.FC = () => {
       </div>
       <h2 className="text-xl font-semibold text-openai-black mb-2">Analyzing Ecosystem</h2>
       <p className="text-gray-500 text-sm max-w-md text-center mb-6">
-        Retrieving the latest agents.md data from our daily cache...
+        Retrieving the latest AGENTS.md data from our daily cache...
       </p>
       <Loader2 className="w-6 h-6 text-openai-green animate-spin" />
     </div>
@@ -100,14 +100,14 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-white text-openai-black">
       {/* Navbar */}
       <header className="border-b border-gray-100 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-center relative">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 bg-openai-black rounded-full flex items-center justify-center">
                 <div className="w-2.5 h-2.5 bg-white rounded-[1px]"></div>
             </div>
-            <span className="font-semibold tracking-tight">Agents.md Analyzer</span>
+            <span className="font-semibold tracking-tight">Agents.md Dashboard</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+          <div className="absolute right-6 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
             <CalendarClock className="w-3.5 h-3.5" />
             <span>Updated: {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : 'Today'}</span>
           </div>

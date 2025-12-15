@@ -30,7 +30,7 @@ export const TokenInput: React.FC<TokenInputProps> = ({ onAnalyze, loading, prog
             Get started
           </h1>
           <p className="text-gray-500 text-sm">
-            Enter your GitHub token to analyze the agents.md ecosystem
+            Enter your GitHub token to analyze the AGENTS.md ecosystem
           </p>
         </div>
 

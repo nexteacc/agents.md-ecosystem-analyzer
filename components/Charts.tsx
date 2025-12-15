@@ -104,13 +104,6 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
             data={data}
             layout="vertical"
             margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-            onClick={(data) => {
-              // Handle bar background clicks if needed
-              if (data && data.activePayload && data.activePayload.length) {
-                const repo = data.activePayload[0].payload;
-                window.open(`https://github.com/${repo.fullName}/blob/HEAD/agents.md`, '_blank');
-              }
-            }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
             <XAxis type="number" hide />
@@ -137,7 +130,10 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
                         e.stopPropagation();
                         // Find full repo data to get fullName
                         if (repo) {
-                          window.open(`https://github.com/${repo.fullName}/blob/HEAD/agents.md`, '_blank');
+                          // Use exact path from data if available (need to cast or access prop safely)
+                          // @ts-ignore - agentsMdPath exists on repo node
+                          const filePath = repo.agentsMdPath || 'AGENTS.md';
+                          window.open(`https://github.com/${repo.fullName}/blob/HEAD/${filePath}`, '_blank');
                         }
                       }}
                       className="hover:fill-blue-600 hover:underline"
@@ -157,7 +153,7 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
                     <div className="bg-white p-2 border border-blue-100 shadow-sm rounded text-xs">
                       <p className="font-semibold text-gray-800">{data.fullName}</p>
                       <p className="text-gray-500 mb-1">Stars: {data.stars.toLocaleString()}</p>
-                      <p className="text-blue-500 text-[10px] italic">Click to view agents.md ↗</p>
+                      <p className="text-blue-500 text-[10px] italic">Click to view AGENTS.md ↗</p>
                     </div>
                   );
                 }
@@ -169,8 +165,7 @@ export const TopReposBarChart: React.FC<{ repos: RepositoryNode[] }> = ({ repos 
               fill="#202123"
               radius={[0, 2, 2, 0]}
               barSize={16}
-              cursor="pointer"
-            // Individual bar click handled by parent BarChart onClick or we can add specific here
+            // Removed cursor pointer and click handler
             />
           </BarChart>
         </ResponsiveContainer>
