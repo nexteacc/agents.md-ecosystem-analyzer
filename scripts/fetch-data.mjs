@@ -141,11 +141,11 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
   // 
   // Note: 不支持同时组合使用 size:>=X size:<=Y (会导致 422 错误)
   // 应该使用范围语法 size:X..Y 或分别查询
-  
+
   // Build size filter based on range
   let sizeFilter;
   const rangeStr = `${minSize}..${maxSize}`;
-  
+
   if (minSize === maxSize) {
     // 精确大小：使用 size:n 语法（更符合规范）
     sizeFilter = `size:${minSize}`;
@@ -153,12 +153,12 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
     // 区间范围：使用 size:n..m 语法
     sizeFilter = `size:${rangeStr}`;
   }
-  
+
   // Safety check: GitHub API may reject very large ranges
   // Pre-split large ranges to avoid 422 errors
   const MAX_SAFE_RANGE = 50000; // 50KB - empirically safe limit
   const rangeSize = maxSize - minSize;
-  
+
   if (rangeSize > MAX_SAFE_RANGE && minSize !== maxSize) {
     // Range is too large, split it BEFORE querying API
     const mid = Math.floor((minSize + maxSize) / 2);
@@ -167,8 +167,10 @@ async function recursiveSearch(token, minSize, maxSize, allNodeIds) {
     await recursiveSearch(token, mid + 1, maxSize, allNodeIds);
     return;
   }
-  
-  const coreQuery = `fork:false ${sizeFilter}`;
+
+  // NOTE: 'fork' qualifier is NOT supported in Code Search API (causes 422).
+  // We filter forks manually in the enrichment phase.
+  const coreQuery = `${sizeFilter}`;
   const probeQuery = `filename:agents.md ${coreQuery}`;
 
   // 1. Probe: Get just the count (page 1, per_page 1) to be fast
